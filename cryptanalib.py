@@ -5,6 +5,49 @@ import string
 import frequency
 import operator
 
+# Polybius square generator. Returns a list of strings of equal
+# length, either 5x5 or 6x6 depending on whether extended
+# Polybius mode is on. Assumes I/J are represented as one letter
+def make_polybius_square(password,extended=False):
+   alphabet = string.lowercase
+   if extended == True:
+      alphabet += string.digits
+   else:
+      alphabet = string.replace(string.lowercase, 'j', '')
+      password = string.replace(password, 'j', 'i')
+   if any([x not in alphabet for x in set(password)]):
+      return False
+   unique_letters = []
+   for letter in password:
+      if letter not in unique_letters:
+         unique_letters.append(letter)
+   for letter in unique_letters:
+      alphabet = string.replace(alphabet, letter, '')
+   for letter in unique_letters[::-1]:
+      alphabet = letter + alphabet
+   ps = []
+   alphabet_len = len(alphabet)
+   grid_size = 5 + int(extended) # Not necessary, but looks cleaner
+   for index in xrange(0,alphabet_len,grid_size):
+      ps.append(alphabet[index:index+grid_size])
+   return ps
+
+# Decrypt given a polybius square (such as one generated
+# by make_polybius_square() ) and a ciphertext.
+def polybius_decrypt(ps, ciphertext):
+   ct_len = len(ciphertext)
+   if (ct_len % 2) != 0:
+      return False
+   digraphs = []
+   plaintext = ''
+   for index in xrange(0,ct_len,2):
+      digraphs.append(ciphertext[index:index+2])
+   for digraph in digraphs:
+      x = int(digraph[0]) - 1
+      y = int(digraph[1]) - 1
+      plaintext += ps[y][x]
+   return plaintext
+
 # Look for repeating blocks
 def detect_ecb(ciphertext):
    ciphertext_len = len(ciphertext)
@@ -36,7 +79,7 @@ def pkcs7_pad(text, blocksize):
    return text+chr(pad_num)*pad_num
 
 # TODO: Byte at a time ecb decryption
-def ecb_decrypt(encryption_oracle, random_prefix=False):
+def ecb_cp_decrypt(encryption_oracle, random_prefix=False):
    last_len = 0
    bytes_to_boundary = 0
    for length in xrange(1,33):
